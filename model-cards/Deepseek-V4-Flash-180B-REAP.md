@@ -16,11 +16,12 @@ tags:
 base_model: deepseek-ai/DeepSeek-V4-Flash
 ---
 
-# Deepseek-V4-Flash-180B-REAP
+# DeepSeek-V4-Flash-Spark
 
-This is the 180B / K160 REAP-pruned DeepSeek V4 Flash model. The validated single-DGX Spark serving recipe is maintained here:
+This is the 180B / K160 REAP-pruned DeepSeek V4 Flash model, served as `DeepSeek-V4-Flash-Spark`. The validated single-DGX Spark serving recipe is maintained here:
 
-- GitHub: https://github.com/0xSero/deepseek-v4-flash-spark-200k
+- One-command Spark wrapper: https://github.com/0xSero/deepseek-spark
+- Runtime module: https://github.com/0xSero/deepseek-v4-flash-spark-200k
 - Docker registry target: `ghcr.io/0xsero/deepseek-v4-flash-spark-vllm:cutlass451-g27`
 - Validated local Docker image: `vllm-node-dsv4-cutlass451:latest` / `sha256:5df60ebb9c10dfb86d5946cae8244adfe65a7fd405401bd542ecf22d5c497a4a`
 - Model repo used by the recipe: `0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP`
@@ -31,7 +32,7 @@ This is the 180B / K160 REAP-pruned DeepSeek V4 Flash model. The validated singl
 Run this on the DGX Spark. `HF_TOKEN` is only required if the model repo is private or not already cached on the machine.
 
 ```bash
-HF_TOKEN=... bash -lc 'set -euo pipefail; cd /home/sero/spark; rm -rf deepseek-v4-flash-spark-200k; git clone https://github.com/0xSero/deepseek-v4-flash-spark-200k.git; cd deepseek-v4-flash-spark-200k; ./install.sh --profile k160-mtp2-200k --launch'
+HF_TOKEN=... bash -lc 'set -euo pipefail; cd /home/sero/spark; rm -rf deepseek-spark; git clone https://github.com/0xSero/deepseek-spark.git; cd deepseek-spark; ./setup.sh full k160'
 ```
 
 Do not commit tokens into the repo or a model card. Pass them only through the environment for the one command above.
@@ -43,7 +44,7 @@ The profile lives at `configs/k160-mtp2-200k.env` in the GitHub repo.
 ```bash
 MODEL_REPO=0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP
 MODEL_REVISION=7c360e1cd4a5168099dbc54d16d929bf6df04990
-SERVED_MODEL_NAME=deepseek-v4-flash-k160-g27-cutlass451-mtp2
+SERVED_MODEL_NAME=DeepSeek-V4-Flash-Spark
 CONTEXT_LENGTH=200000
 KV_CACHE_MEMORY_BYTES=6G
 MAX_NUM_BATCHED_TOKENS=4096
@@ -51,14 +52,13 @@ MAX_NUM_SEQS=1
 GPU_MEMORY_UTILIZATION=0.88
 WATCHDOG_MIN_AVAILABLE_KB=6291456
 KV_CACHE_DTYPE=fp8
-ENFORCE_EAGER=0
-THINKING=false
+THINKING=true
 SPECULATIVE_CONFIG='{"method":"deepseek_mtp","num_speculative_tokens":2}'
 VLLM_ENABLE_DEEPSEEK_V4_SPARSE_MLA_WARMUP=0
 VLLM_TRITON_MLA_SPARSE_ALLOW_CUDAGRAPH=1
 ```
 
-The launcher enables DeepSeek V4 tokenizer, reasoning parser, tool-call parser, prefix caching, FP8 KV, MTP speculative decoding, and CUDA graphs. Do not add `--enforce-eager`; this profile was validated with CUDA graph capture enabled.
+The launcher enables DeepSeek V4 tokenizer, reasoning parser, tool-call parser, prefix caching, FP8 KV, MTP speculative decoding, and CUDA graph capture.
 
 ## Docker runtime
 

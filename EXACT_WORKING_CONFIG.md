@@ -1,87 +1,51 @@
 # Exact Working Config
 
-Default target: K160 / `Deepseek-V4-Flash-180B-REAP` + MTP2 + 200K on one DGX Spark.
+Use the public wrapper repo:
 
 ```bash
-MODEL_DIR=/home/sero/spark/models/hf-cache/models--0xSero--DeepSeek-V4-Flash-180B-codex-K160-REAP/snapshots/7c360e1cd4a5168099dbc54d16d929bf6df04990
-IMAGE=vllm-node-dsv4-cutlass451:latest
-SERVED_MODEL_NAME=deepseek-v4-flash-k160-g27-cutlass451-mtp2
-CONTEXT_LENGTH=200000
-KV_CACHE_MEMORY_BYTES=6G
-MAX_NUM_BATCHED_TOKENS=4096
-MAX_NUM_SEQS=1
-GPU_MEMORY_UTILIZATION=0.88
-KV_CACHE_DTYPE=fp8
-ENFORCE_EAGER=0
-THINKING=false
-SPECULATIVE_CONFIG='{"method":"deepseek_mtp","num_speculative_tokens":2}'
-VLLM_ENABLE_DEEPSEEK_V4_SPARSE_MLA_WARMUP=0
-VLLM_TRITON_MLA_SPARSE_ALLOW_CUDAGRAPH=1
+HF_TOKEN=... bash -lc 'set -euo pipefail; cd /home/sero/spark; rm -rf deepseek-spark; git clone https://github.com/0xSero/deepseek-spark.git; cd deepseek-spark; ./setup.sh full k160'
 ```
 
-Launch:
+Default endpoints:
 
-```bash
-PROFILE=k160-mtp2-200k ./scripts/serve_profile.sh
-```
+- UI: `http://100.83.190.2:3000`
+- Controller: `http://100.83.190.2:8080`
+- Model API: `http://100.83.190.2:8000`
 
-Key startup evidence:
+Models:
+
+- `DeepSeek-V4-Flash-Spark`: `0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP`
+- `DeepSeek-V4-Flash-Spark-Mini`: `0xSero/DeepSeek-V4-Flash-162B-codex-K144-REAP`
+- 213B reference: https://huggingface.co/0xSero/DeepSeek-V4-Flash-213B/
+
+K160 default:
 
 ```text
-MTP draft model loaded: 39 params
-Model loading took 96.66 GiB memory
-GPU KV cache size: 537,516 tokens
-Maximum concurrency for 200,000 tokens per request: 2.69x
-Graph capturing finished in 20 secs, took 1.66 GiB
+profile=k160-mtp2-200k
+served_model_name=DeepSeek-V4-Flash-Spark
+max_model_len=200000
+kv_cache_dtype=fp8
+kv_cache_memory_bytes=6G
+max_num_batched_tokens=4096
+max_num_seqs=1
+gpu_memory_utilization=0.88
+thinking=true
+speculative_config={"method":"deepseek_mtp","num_speculative_tokens":2}
+cuda_graphs=FULL_AND_PIECEWISE
 ```
 
-Benchmark evidence:
+K144 default:
 
 ```text
-prompt_tokens: 186,390
-TTFT: 362.573s
-prefill: 514.075 tok/s
-decode: 24.378 tok/s
-needle_retained: true
-watchdog_kill: false
-```
-
-Fixed long-coding evidence:
-
-```text
-prompt_tokens: 182,112
-TTFT: 353.799s
-prefill: 514.733 tok/s
-decode: 18.946 tok/s
-off_by_one_found: true
-watchdog_kill: false
-```
-
-K144 / `Deepseek-V4-Flash-162B-REAP` validated 200K profile:
-
-```bash
-MODEL_DIR=/home/sero/spark/models/hf-cache/models--0xSero--DeepSeek-V4-Flash-162B-codex-K144-REAP/snapshots/d663e8fb16809f6619000648b187b257249ed824
-IMAGE=vllm-node-dsv4-cutlass451:latest
-SERVED_MODEL_NAME=deepseek-v4-flash-k144-g27-cutlass451
-CONTEXT_LENGTH=200000
-KV_CACHE_MEMORY_BYTES=14G
-MAX_NUM_BATCHED_TOKENS=8192
-MAX_NUM_SEQS=1
-GPU_MEMORY_UTILIZATION=0.88
-KV_CACHE_DTYPE=fp8
-ENFORCE_EAGER=0
-THINKING=false
-SPECULATIVE_CONFIG=
-VLLM_ENABLE_DEEPSEEK_V4_SPARSE_MLA_WARMUP=0
-VLLM_TRITON_MLA_SPARSE_ALLOW_CUDAGRAPH=1
-```
-
-K144 benchmark evidence:
-
-```text
-prompt_tokens: 186,390
-TTFT: 345.834s
-prefill: 538.958 tok/s
-decode: 13.899 tok/s
-needle_retained: true
+profile=k144-nospec-200k
+served_model_name=DeepSeek-V4-Flash-Spark-Mini
+max_model_len=200000
+kv_cache_dtype=fp8
+kv_cache_memory_bytes=14G
+max_num_batched_tokens=8192
+max_num_seqs=1
+gpu_memory_utilization=0.88
+thinking=true
+speculative_config=
+cuda_graphs=FULL_AND_PIECEWISE
 ```

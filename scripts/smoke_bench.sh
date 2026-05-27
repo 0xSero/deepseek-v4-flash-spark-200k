@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL=${BASE_URL:-http://100.83.190.2:8002}
-MODEL=${MODEL:-deepseek-v4-flash-k160-g27-cutlass451-mtp2}
+BASE_URL=${BASE_URL:-http://100.83.190.2:8000}
+MODEL=${MODEL:-DeepSeek-V4-Flash-Spark}
 
 python3 - <<PY
 import json, urllib.request

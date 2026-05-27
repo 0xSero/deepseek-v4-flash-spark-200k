@@ -2,8 +2,8 @@
 set -euo pipefail
 
 MODEL_DIR=${MODEL_DIR:?Set MODEL_DIR to the DeepSeek V4 snapshot path on the Spark}
-NAME=${NAME:-vllm-dsv4-reap-guarded}
 PORT=${PORT:-8002}
+NAME=${NAME:-studio-deepseek-v4-flash-spark-${PORT}}
 HOST=${HOST:-100.83.190.2}
 CONTEXT_LENGTH=${CONTEXT_LENGTH:-512}
 MAX_NUM_BATCHED_TOKENS=${MAX_NUM_BATCHED_TOKENS:-256}
@@ -13,7 +13,7 @@ KV_CACHE_DTYPE=${KV_CACHE_DTYPE:-fp8}
 GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION:-0.70}
 WATCHDOG_MIN_AVAILABLE_KB=${WATCHDOG_MIN_AVAILABLE_KB:-2097152}
 IMAGE=${IMAGE:-vllm-node-dsv4-cutlass451:latest}
-SERVED_MODEL_NAME=${SERVED_MODEL_NAME:-deepseek-v4-flash-reap}
+SERVED_MODEL_NAME=${SERVED_MODEL_NAME:-DeepSeek-V4-Flash-Spark}
 WATCHDOG_LOG=${WATCHDOG_LOG:-/home/sero/spark/logs/${NAME}.watchdog.log}
 PATCHER=${PATCHER:-/home/sero/spark/serve/patch_vllm_k160_native.py}
 ENABLE_TOOLS=${ENABLE_TOOLS:-1}

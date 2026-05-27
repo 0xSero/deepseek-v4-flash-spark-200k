@@ -18,15 +18,34 @@ set +a
 
 MODEL_DIR=${MODEL_DIR:-${HF_HOME:-${SPARK_ROOT}/models/hf-cache}/models--${MODEL_REPO//\//--}/snapshots/${MODEL_REVISION}}
 IMAGE=${IMAGE:-vllm-node-dsv4-cutlass451:latest}
-NAME=${NAME:-dsv4-${PROFILE}}
 PORT=${PORT:-8002}
 HOST=${HOST:-100.83.190.2}
+
+case "$PROFILE" in
+  k144|k144-nospec-200k)
+    DEFAULT_SERVED_MODEL_NAME=DeepSeek-V4-Flash-Spark-Mini
+    DEFAULT_CONTAINER_NAME=studio-deepseek-v4-flash-spark-mini-${PORT}
+    ;;
+  k160|k160-mtp2-200k|k160-nospec-200k)
+    DEFAULT_SERVED_MODEL_NAME=DeepSeek-V4-Flash-Spark
+    DEFAULT_CONTAINER_NAME=studio-deepseek-v4-flash-spark-${PORT}
+    ;;
+  *)
+    DEFAULT_SERVED_MODEL_NAME=DeepSeek-V4-Flash-Spark
+    DEFAULT_CONTAINER_NAME=studio-deepseek-v4-flash-spark-${PORT}
+    ;;
+esac
 
 if [[ ! -d "$MODEL_DIR" ]]; then
   echo "missing MODEL_DIR: $MODEL_DIR" >&2
   echo "run ./install.sh --profile ${PROFILE} first" >&2
   exit 1
 fi
+
+NAME=${NAME:-$DEFAULT_CONTAINER_NAME}
+SERVED_MODEL_NAME=${SERVED_MODEL_NAME_OVERRIDE:-${SERVED_MODEL_NAME:-$DEFAULT_SERVED_MODEL_NAME}}
+THINKING=${THINKING_OVERRIDE:-${THINKING:-true}}
+ENFORCE_EAGER=${ENFORCE_EAGER:-0}
 
 MODEL_DIR="$MODEL_DIR" \
 IMAGE="$IMAGE" \

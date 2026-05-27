@@ -2,12 +2,18 @@
 
 Public reproducible recipe for serving the REAP-pruned DeepSeek V4 Flash models on one DGX Spark with vLLM, FP8 MLA KV, CUDA graphs, and optional DeepSeek MTP speculative decoding.
 
-Validated model-card names:
+Served API names:
 
-- `Deepseek-V4-Flash-162B-REAP` -> `0xSero/DeepSeek-V4-Flash-162B-codex-K144-REAP`
-- `Deepseek-V4-Flash-180B-REAP` -> `0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP`
+- `DeepSeek-V4-Flash-Spark` -> `0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP`
+- `DeepSeek-V4-Flash-Spark-Mini` -> `0xSero/DeepSeek-V4-Flash-162B-codex-K144-REAP`
 
 The model-card READMEs to publish to Hugging Face live in `model-cards/`.
+
+For vLLM Studio, use the barebones wrapper repo:
+
+```bash
+HF_TOKEN=... bash -lc 'set -euo pipefail; cd /home/sero/spark; rm -rf deepseek-spark; git clone https://github.com/0xSero/deepseek-spark.git; cd deepseek-spark; ./setup.sh full k160'
+```
 
 ## One Command
 
@@ -53,12 +59,13 @@ Anonymous GHCR manifest access currently returns `denied` until package-scoped u
 ```bash
 MODEL_REPO=0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP
 MODEL_REVISION=7c360e1cd4a5168099dbc54d16d929bf6df04990
+SERVED_MODEL_NAME=DeepSeek-V4-Flash-Spark
 CONTEXT_LENGTH=200000
 KV_CACHE_MEMORY_BYTES=6G
 MAX_NUM_BATCHED_TOKENS=4096
 MAX_NUM_SEQS=1
+THINKING=true
 SPECULATIVE_CONFIG='{"method":"deepseek_mtp","num_speculative_tokens":2}'
-ENFORCE_EAGER=0
 ```
 
 The launch script also enables FP8 KV, DeepSeek V4 tokenizer/tool/reasoning parsers, prefix caching, `FULL_AND_PIECEWISE` CUDA graphs, and the GB10 REAP patcher.
@@ -101,7 +108,7 @@ K144 MTP2 improved short decode but was not long-context safe at the tested 8G w
 
 ## Notes
 
-- Do not add `--enforce-eager`; the working profiles capture CUDA graphs.
+- The working profiles capture CUDA graphs.
 - The image lineage is `vllm-node-dsv4:latest` / vLLM `0.1.dev17016+g27fd665bd.d20260526` plus `nvidia-cutlass-dsl[cu13]==4.5.1`.
 - The patcher applies the REAP nonstandard expert-count router fallback, MXFP4 memory hygiene, optional cute-dsl override hook, and FlashInfer CUDA IPC libcudart fix.
 - The exact GHCR target is `ghcr.io/0xsero/deepseek-v4-flash-spark-vllm:cutlass451-g27`; if it is not available, the installer can use the already-cached `vllm-node-dsv4-cutlass451:latest` image or build from a local `vllm-node-dsv4:latest` base image.
