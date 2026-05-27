@@ -1,28 +1,50 @@
 # DeepSeek V4 Flash REAP on One DGX Spark at 200K
 
-Private reproducible recipe for serving `0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP` on one DGX Spark (`spark-2822`) with vLLM, FP8 MLA KV, CUDA graphs, and DeepSeek MTP speculative decoding.
+Public reproducible recipe for serving the REAP-pruned DeepSeek V4 Flash models on one DGX Spark with vLLM, FP8 MLA KV, CUDA graphs, and optional DeepSeek MTP speculative decoding.
+
+Validated model-card names:
+
+- `Deepseek-V4-Flash-162B-REAP` -> `0xSero/DeepSeek-V4-Flash-162B-codex-K144-REAP`
+- `Deepseek-V4-Flash-180B-REAP` -> `0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP`
+
+The model-card READMEs to publish to Hugging Face live in `model-cards/`.
 
 ## One Command
 
-From the Spark that already has the working image cached:
+K160 / 180B, default 200K profile:
 
 ```bash
-GITHUB_TOKEN=... HF_TOKEN=... bash -lc 'set -euo pipefail; cd /home/sero/spark; rm -rf deepseek-v4-flash-spark-200k; git clone https://x-access-token:${GITHUB_TOKEN}@github.com/0xSero/deepseek-v4-flash-spark-200k.git; cd deepseek-v4-flash-spark-200k; ./install.sh --profile k160-mtp2-200k --launch'
+HF_TOKEN=... bash -lc 'set -euo pipefail; cd /home/sero/spark; rm -rf deepseek-v4-flash-spark-200k; git clone https://github.com/0xSero/deepseek-v4-flash-spark-200k.git; cd deepseek-v4-flash-spark-200k; ./install.sh --profile k160-mtp2-200k --launch'
 ```
 
-`GITHUB_TOKEN` is needed while this repo and the GHCR image are private. `HF_TOKEN` is only needed if the Hugging Face model is private or not already cached.
+`HF_TOKEN` is only needed if the Hugging Face model is private or not already cached.
 
-For a fresh Spark, publish/pull the Docker image first. The expected image name is:
+K144 / 162B, validated 200K profile:
+
+```bash
+HF_TOKEN=... bash -lc 'set -euo pipefail; cd /home/sero/spark; rm -rf deepseek-v4-flash-spark-200k; git clone https://github.com/0xSero/deepseek-v4-flash-spark-200k.git; cd deepseek-v4-flash-spark-200k; ./install.sh --profile k144-nospec-200k --launch'
+```
+
+For a fresh Spark, pull the Docker image first. The registry target is:
 
 ```text
 ghcr.io/0xsero/deepseek-v4-flash-spark-vllm:cutlass451-g27
 ```
 
-The current local GitHub token did not have `write:packages`, so GHCR upload was blocked. After refreshing a token with package scope, run:
+If the GHCR image is unavailable, refresh a GitHub token with package scope and run:
 
 ```bash
 ./scripts/push_ghcr_image.sh
 ```
+
+Current validated local Docker image on `spark-2822`:
+
+```text
+vllm-node-dsv4-cutlass451:latest
+sha256:5df60ebb9c10dfb86d5946cae8244adfe65a7fd405401bd542ecf22d5c497a4a
+```
+
+Anonymous GHCR manifest access currently returns `denied` until package-scoped upload/publication is completed.
 
 ## Default Working Profile
 
@@ -40,6 +62,27 @@ ENFORCE_EAGER=0
 ```
 
 The launch script also enables FP8 KV, DeepSeek V4 tokenizer/tool/reasoning parsers, prefix caching, `FULL_AND_PIECEWISE` CUDA graphs, and the GB10 REAP patcher.
+
+## Model Cards
+
+Prepared cards:
+
+- `model-cards/Deepseek-V4-Flash-162B-REAP.md`
+- `model-cards/Deepseek-V4-Flash-180B-REAP.md`
+
+Upload them after logging into Hugging Face with write access to the `0xSero` repos:
+
+```bash
+HF_TOKEN=... ./scripts/upload_model_cards.sh
+```
+
+On Spark, a safer form is:
+
+```bash
+PYTHON=/home/sero/spark/tools/hf-download-venv/bin/python HF_TOKEN_FILE=/home/sero/.cache/huggingface/token ./scripts/upload_model_cards.sh
+```
+
+The upload script writes only `README.md` in each model repo. It never prints the token.
 
 ## Evidence
 
@@ -61,4 +104,5 @@ K144 MTP2 improved short decode but was not long-context safe at the tested 8G w
 - Do not add `--enforce-eager`; the working profiles capture CUDA graphs.
 - The image lineage is `vllm-node-dsv4:latest` / vLLM `0.1.dev17016+g27fd665bd.d20260526` plus `nvidia-cutlass-dsl[cu13]==4.5.1`.
 - The patcher applies the REAP nonstandard expert-count router fallback, MXFP4 memory hygiene, optional cute-dsl override hook, and FlashInfer CUDA IPC libcudart fix.
-- The exact GHCR image is expected at `ghcr.io/0xsero/deepseek-v4-flash-spark-vllm:cutlass451-g27`; if it is not available, the installer can use the already-cached `vllm-node-dsv4-cutlass451:latest` image or build from a local `vllm-node-dsv4:latest` base image.
+- The exact GHCR target is `ghcr.io/0xsero/deepseek-v4-flash-spark-vllm:cutlass451-g27`; if it is not available, the installer can use the already-cached `vllm-node-dsv4-cutlass451:latest` image or build from a local `vllm-node-dsv4:latest` base image.
+- Never commit `.env` files or tokens. Pass `HF_TOKEN` and `GITHUB_TOKEN` through the environment only.

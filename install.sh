@@ -9,6 +9,14 @@ IMAGE_REF=${IMAGE_REF:-ghcr.io/0xsero/deepseek-v4-flash-spark-vllm:cutlass451-g2
 LOCAL_IMAGE=${LOCAL_IMAGE:-vllm-node-dsv4-cutlass451:latest}
 BASE_IMAGE=${BASE_IMAGE:-vllm-node-dsv4:latest}
 LAUNCH=0
+GHCR_LOGGED_IN=0
+
+cleanup() {
+  if [[ "$GHCR_LOGGED_IN" == "1" ]]; then
+    docker logout ghcr.io >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -53,6 +61,7 @@ echo "MODEL_REVISION=${MODEL_REVISION}"
 if ! docker image inspect "$LOCAL_IMAGE" >/dev/null 2>&1; then
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     echo "$GITHUB_TOKEN" | docker login ghcr.io -u "${GITHUB_USER:-0xSero}" --password-stdin >/dev/null
+    GHCR_LOGGED_IN=1
   fi
   if docker pull "$IMAGE_REF"; then
     docker tag "$IMAGE_REF" "$LOCAL_IMAGE"
@@ -73,13 +82,15 @@ if [[ ! -d "$SNAPSHOT_DIR" ]]; then
   fi
   "${VENV}/bin/python" -m pip install -U pip >/dev/null
   "${VENV}/bin/python" -m pip install -U huggingface_hub hf_transfer >/dev/null
-  HF_HOME="$HF_HOME" HF_HUB_ENABLE_HF_TRANSFER=1 "${VENV}/bin/python" - <<PY
+  HF_HOME="$HF_HOME" HF_HUB_ENABLE_HF_TRANSFER=1 MODEL_REPO="$MODEL_REPO" MODEL_REVISION="$MODEL_REVISION" "${VENV}/bin/python" - <<'PY'
+import os
 from huggingface_hub import snapshot_download
+
 snapshot_download(
-    repo_id="${MODEL_REPO}",
-    revision="${MODEL_REVISION}",
-    cache_dir="${HF_HOME}",
-    token="${HF_TOKEN:-}" or None,
+    repo_id=os.environ["MODEL_REPO"],
+    revision=os.environ["MODEL_REVISION"],
+    cache_dir=os.environ["HF_HOME"],
+    token=os.environ.get("HF_TOKEN") or None,
     resume_download=True,
 )
 PY
