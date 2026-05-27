@@ -47,11 +47,14 @@ Measured on `spark-2822`, May 27 2026:
 
 | profile | ready | watchdog | prompt tokens | TTFT | prefill | decode | result |
 | --- | --- | --- | ---: | ---: | ---: | ---: | --- |
+| K160 MTP2, 6G KV, 4096 chunk | yes | no | 186,390 | 362.573s | 514.075 tok/s | 24.378 tok/s | 200K needle retained |
+| K160 MTP2, fixed coding prompt | yes | no | 182,112 | 353.799s | 514.733 tok/s | 18.946 tok/s | off-by-one found |
+| K144 no-spec, 14G KV, 8192 chunk | yes | teardown kill | 186,390 | 345.834s | 538.958 tok/s | 13.899 tok/s | 200K needle retained |
 | K160 MTP2, 6G KV, 4096 chunk | yes | no | 136,534 | 248.217s | 550.059 tok/s | 33.287 tok/s | needle retained |
 | K160 no-spec, 8G KV, 4096 chunk | yes | no | 136,534 | 246.729s | 553.376 tok/s | 13.188 tok/s | needle retained |
 | K144 no-spec, 14G KV, 8192 chunk | yes | no | 136,534 | 234.304s | 582.721 tok/s | 12.531 tok/s | needle retained |
 
-K144 MTP2 improved short decode but was not long-context safe at the tested 8G watchdog threshold. K160 MTP2 was made long-context safe by using a 6G KV pool.
+K144 MTP2 improved short decode but was not long-context safe at the tested 8G watchdog threshold. K144 no-spec 14G/8192 proves the 200K path but has very thin teardown margin. K160 MTP2 was made long-context safe by using a 6G KV pool.
 
 ## Notes
 

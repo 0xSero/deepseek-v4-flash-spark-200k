@@ -38,10 +38,21 @@ Graph capturing finished in 20 secs, took 1.66 GiB
 Benchmark evidence:
 
 ```text
-prompt_tokens: 136,534
-TTFT: 248.217s
-prefill: 550.059 tok/s
-decode: 33.287 tok/s
+prompt_tokens: 186,390
+TTFT: 362.573s
+prefill: 514.075 tok/s
+decode: 24.378 tok/s
 needle_retained: true
+watchdog_kill: false
+```
+
+Fixed long-coding evidence:
+
+```text
+prompt_tokens: 182,112
+TTFT: 353.799s
+prefill: 514.733 tok/s
+decode: 18.946 tok/s
+off_by_one_found: true
 watchdog_kill: false
 ```
