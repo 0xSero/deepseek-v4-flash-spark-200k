@@ -3,39 +3,63 @@ license: mit
 library_name: transformers
 pipeline_tag: text-generation
 tags:
-- deepseek-v4
-- mixture-of-experts
-- reap
-- dgx-spark
-- vllm
-- long-context
-- fp8
-- mxfp4
-- speculative-decoding
-- experimental
+  - deepseek-v4
+  - mixture-of-experts
+  - reap
+  - dgx-spark
+  - vllm
+  - long-context
+  - fp8
+  - mxfp4
+  - speculative-decoding
+  - experimental
 base_model: deepseek-ai/DeepSeek-V4-Flash
 ---
 
 # DeepSeek-V4-Flash-Spark
 
-This is the 180B / K160 REAP-pruned DeepSeek V4 Flash model, served as `DeepSeek-V4-Flash-Spark`. The validated single-DGX Spark serving recipe is maintained here:
+**180B parameters | K160 REAP-pruned | 200K context | MTP speculative decoding**
 
-- One-command Spark wrapper: https://github.com/0xSero/deepseek-spark
-- Runtime module: https://github.com/0xSero/deepseek-v4-flash-spark-200k
-- Docker registry target: `ghcr.io/0xsero/deepseek-v4-flash-spark-vllm:cutlass451-g27`
-- Validated local Docker image: `vllm-node-dsv4-cutlass451:latest` / `sha256:5df60ebb9c10dfb86d5946cae8244adfe65a7fd405401bd542ecf22d5c497a4a`
-- Model repo used by the recipe: `0xSero/DeepSeek-V4-Flash-180B`
-- Validated revision: `7c360e1cd4a5168099dbc54d16d929bf6df04990`
+This is a pruned and quantized DeepSeek V4 Flash that runs on a single DGX Spark. It is not the original model. It is a derivative built to fit into 128 GB of host memory while keeping the full 200,000-token context window alive.
 
-## One-command Spark install
+The goal was simple: take one of the best open reasoning models available and make it runnable on a desktop AI workstation without losing what makes it useful. The result serves at about 24 tok/s decode with 2-token speculative decoding, and it retains a needle buried at 200K context.
 
-Run this on the DGX Spark. `HF_TOKEN` is only required if the model repo is private or not already cached on the machine.
+## What this is
+
+- Base: `deepseek-ai/DeepSeek-V4-Flash`
+- Pruning: REAP (Routing-Enhanced Activation Pruning) at K160
+- Final size: ~180B active parameters
+- Quantization: NVFP4 / MXFP4 expert weights with FP8 KV cache
+- Serving: vLLM with DeepSeek V4 tokenizer, reasoning parser, and tool-call parser
+- Context: 200,000 tokens validated end-to-end
+- Hardware target: single NVIDIA DGX Spark / GB10 / SM121
+
+The K160 checkpoint was chosen because it was the best balance found during testing. Smaller checkpoints (K144, 162B) could also reach 200K, but K160 kept more model capacity while still fitting in memory. Larger checkpoints (200B, 213B) could not reach API readiness on one Spark under any tested configuration.
+
+## How we got here
+
+This was not a straightforward port. DeepSeek V4 Flash is a 641B-parameter MoE model. The public vLLM recipe for 200K context assumes two DGX Sparks in tensor-parallel. We had one.
+
+The path to a single-Spark 200K server involved:
+
+1. **Building a native ARM64 vLLM image** from the DeepSeek V4 community branch (`vllm-project/vllm#41834`), since the published NVIDIA images were amd64-only.
+2. **Patching the runtime** to handle REAP's nonstandard expert counts, MXFP4 memory layout, and a FlashInfer CUDA IPC fix.
+3. **Applying the NVIDIA forum Cutlass 4.5.1 workaround** to fix a MoE kernel dispatch issue that blocked loading on GB10.
+4. **Testing every checkpoint** from 148B through 213B. 148B, 200B, and 213B all failed before `/v1/models` on one Spark. K160 was the largest that survived.
+5. **Tuning the memory profile** through dozens of iterations: KV cache size, prefill chunking, batch limits, CUDA graph capture, and watchdog thresholds.
+6. **Validating the 200K needle** and a full qualitative task suite: smoke, diagrams, code, philosophy, tool calls, and long-context retrieval.
+
+The full evidence is in the runtime repo. Every failure, every parameter change, and every benchmark result is documented there.
+
+## One-command install
+
+Run this on the DGX Spark. `HF_TOKEN` is only needed if the model repo is private or not already cached.
 
 ```bash
 HF_TOKEN=... bash -lc 'set -euo pipefail; cd /home/sero/spark; rm -rf deepseek-spark; git clone https://github.com/0xSero/deepseek-spark.git; cd deepseek-spark; ./setup.sh full k160'
 ```
 
-Do not commit tokens into the repo or a model card. Pass them only through the environment for the one command above.
+Do not commit tokens. Pass them only through the environment for this one command.
 
 ## Exact working profile
 
@@ -62,30 +86,30 @@ The launcher enables DeepSeek V4 tokenizer, reasoning parser, tool-call parser, 
 
 ## Docker runtime
 
-The registry target is:
+Registry target:
 
 ```text
 ghcr.io/0xsero/deepseek-v4-flash-spark-vllm:cutlass451-g27
 ```
 
-The image lineage is the DGX Spark DeepSeek V4 vLLM build `vllm-node-dsv4:latest` with vLLM `0.1.dev17016+g27fd665bd.d20260526` and `nvidia-cutlass-dsl[cu13]==4.5.1`. The installer tags the pulled image as `vllm-node-dsv4-cutlass451:latest`.
+The image is the DGX Spark DeepSeek V4 vLLM build `vllm-node-dsv4:latest` with vLLM `0.1.dev17016+g27fd665bd.d20260526` and `nvidia-cutlass-dsl[cu13]==4.5.1`. The installer tags the pulled image as `vllm-node-dsv4-cutlass451:latest`.
 
-The exact image validated on `spark-2822` is:
+Exact image validated on `spark-2822`:
 
 ```text
 vllm-node-dsv4-cutlass451:latest
 sha256:5df60ebb9c10dfb86d5946cae8244adfe65a7fd405401bd542ecf22d5c497a4a
 ```
 
-If GHCR anonymous manifest access returns `denied`, the image has not been package-published yet. In that case the installer uses the already-cached local image or builds `vllm-node-dsv4-cutlass451:latest` from a local `vllm-node-dsv4:latest` base.
+If GHCR anonymous manifest access returns `denied`, the image has not been package-published yet. The installer falls back to the already-cached local image or builds from the local base.
 
-The repo also carries the runtime patcher used during validation. It applies the nonstandard REAP expert-count router fallback, MXFP4 memory hygiene, optional cute-dsl override hook, and a FlashInfer CUDA IPC `libcudart` fix. It does not modify model weights.
+The runtime patcher applies the nonstandard REAP expert-count router fallback, MXFP4 memory hygiene, optional cute-dsl override hook, and a FlashInfer CUDA IPC `libcudart` fix. It does not modify model weights.
 
 ## Validation
 
-Validation was run on `spark-2822`, a single DGX Spark / GB10 / SM121 machine, on May 27 2026.
+Run on `spark-2822`, a single DGX Spark / GB10 / SM121, on May 27 2026.
 
-Startup evidence:
+Startup:
 
 ```text
 MTP draft model loaded: 39 params
@@ -95,7 +119,7 @@ Maximum concurrency for 200,000 tokens per request: 2.69x
 Graph capturing finished in about 20 seconds and used about 1.66 GiB
 ```
 
-Full 200K long-needle benchmark:
+200K long-needle benchmark:
 
 ```text
 run_dir: /home/sero/spark/benchmarks/deepseek-reap/single-server-sweep/k160-mtp2-200k-mnbt4096-kv6g-20260527T192208Z
@@ -107,7 +131,7 @@ needle_retained: true
 watchdog_kill: false
 ```
 
-Fixed 200K long-coding benchmark:
+200K long-coding benchmark:
 
 ```text
 run_dir: /home/sero/spark/benchmarks/deepseek-reap/single-server-sweep/k160-mtp2-200k-longcoding-fixed-20260527T194241Z
@@ -119,12 +143,25 @@ mentions_off_by_one: true
 watchdog_kill: false
 ```
 
-Task coverage at 200K included smoke, ASCII, Unicode, Mermaid, code explanation, religion/philosophy prompts, tool-call fidelity, long-needle retrieval, and long-code review. Smoke, ASCII, Unicode, Mermaid, code, religion, tool-call fidelity, and long-needle passed. A few qualitative rubrics missed narrow fields at `128` output tokens, so benchmark prompts should reserve more completion tokens when judging broad reasoning quality.
+Task coverage at 200K: smoke, ASCII, Unicode, and Mermaid diagrams; code explanation; religion and philosophy prompts; tool-call fidelity; long-needle retrieval; and long-code review. Smoke, diagrams, code, religion, tool calls, and needle retrieval all passed. A few qualitative rubrics missed narrow fields at 128 output tokens, so benchmark prompts should reserve more completion tokens when judging broad reasoning quality.
 
-## Why this is the default profile
+## Why K160 with MTP2
 
-K160 with MTP2 was the best single-Spark balance found so far: it kept the 200K path alive without a watchdog kill and roughly doubled decode speed versus no-spec in comparable long-context tests. The 6G KV pool and 4096-token prefill chunks leave enough room for the weights, DeepGEMM/CUDA graph workspaces, and activations on a 121 GiB usable-memory GB10 system.
+K160 with MTP2 was the best single-Spark balance found. It kept the 200K path alive without a watchdog kill and roughly doubled decode speed versus no-spec in comparable long-context tests. The 6 GB KV pool and 4096-token prefill chunks leave enough room for the weights, DeepGEMM and CUDA graph workspaces, and activations on a 121 GB usable-memory GB10 system.
 
-## Intended use
+## Limitations
 
-This model card is for experimental local inference and reproducibility of the DGX Spark REAP serving recipe. The model is a pruned/quantized DeepSeek V4 Flash derivative; evaluate behavior and license obligations before production use.
+- This is a pruned model. It is not the full DeepSeek V4 Flash. Evaluate quality against your own tasks before trusting it for production work.
+- 200K context works, but it is tight. The server loads, serves, and tears down cleanly, but memory is near the ceiling. Do not expect high concurrency.
+- The public 200K success path for the full model remains dual-Spark TP=2. This single-Spark profile is a compromise.
+- The Docker image and patches are experimental. They are not upstream vLLM and may break on newer commits.
+
+## Links
+
+- One-command wrapper: https://github.com/0xSero/deepseek-spark
+- Runtime module (configs, patcher, evidence): https://github.com/0xSero/deepseek-v4-flash-spark-200k
+- Base model: https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash
+
+## License
+
+MIT for the serving recipe and tooling. The base model weights follow the DeepSeek V4 Flash license. Review it before use.
