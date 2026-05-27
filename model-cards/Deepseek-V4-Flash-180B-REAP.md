@@ -24,7 +24,7 @@ This is the 180B / K160 REAP-pruned DeepSeek V4 Flash model, served as `DeepSeek
 - Runtime module: https://github.com/0xSero/deepseek-v4-flash-spark-200k
 - Docker registry target: `ghcr.io/0xsero/deepseek-v4-flash-spark-vllm:cutlass451-g27`
 - Validated local Docker image: `vllm-node-dsv4-cutlass451:latest` / `sha256:5df60ebb9c10dfb86d5946cae8244adfe65a7fd405401bd542ecf22d5c497a4a`
-- Model repo used by the recipe: `0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP`
+- Model repo used by the recipe: `0xSero/DeepSeek-V4-Flash-180B`
 - Validated revision: `7c360e1cd4a5168099dbc54d16d929bf6df04990`
 
 ## One-command Spark install
@@ -42,7 +42,7 @@ Do not commit tokens into the repo or a model card. Pass them only through the e
 The profile lives at `configs/k160-mtp2-200k.env` in the GitHub repo.
 
 ```bash
-MODEL_REPO=0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP
+MODEL_REPO=0xSero/DeepSeek-V4-Flash-180B
 MODEL_REVISION=7c360e1cd4a5168099dbc54d16d929bf6df04990
 SERVED_MODEL_NAME=DeepSeek-V4-Flash-Spark
 CONTEXT_LENGTH=200000

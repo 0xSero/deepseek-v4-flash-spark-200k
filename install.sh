@@ -56,6 +56,9 @@ set +a
 
 echo "PROFILE=${PROFILE}"
 echo "MODEL_REPO=${MODEL_REPO}"
+if [[ -n "${MODEL_REPO_LEGACY:-}" ]]; then
+  echo "MODEL_REPO_LEGACY=${MODEL_REPO_LEGACY}"
+fi
 echo "MODEL_REVISION=${MODEL_REVISION}"
 
 if ! docker image inspect "$LOCAL_IMAGE" >/dev/null 2>&1; then
@@ -74,7 +77,19 @@ if ! docker image inspect "$LOCAL_IMAGE" >/dev/null 2>&1; then
   fi
 fi
 
-SNAPSHOT_DIR="${HF_HOME}/models--${MODEL_REPO//\//--}/snapshots/${MODEL_REVISION}"
+snapshot_dir_for_repo() {
+  local repo=$1
+  echo "${HF_HOME}/models--${repo//\//--}/snapshots/${MODEL_REVISION}"
+}
+
+SNAPSHOT_DIR=$(snapshot_dir_for_repo "$MODEL_REPO")
+if [[ ! -d "$SNAPSHOT_DIR" && -n "${MODEL_REPO_LEGACY:-}" ]]; then
+  LEGACY_SNAPSHOT_DIR=$(snapshot_dir_for_repo "$MODEL_REPO_LEGACY")
+  if [[ -d "$LEGACY_SNAPSHOT_DIR" ]]; then
+    echo "using cached legacy repo snapshot: ${MODEL_REPO_LEGACY}"
+    SNAPSHOT_DIR="$LEGACY_SNAPSHOT_DIR"
+  fi
+fi
 if [[ ! -d "$SNAPSHOT_DIR" ]]; then
   VENV="${SPARK_ROOT}/tools/hf-download-venv"
   if [[ ! -x "${VENV}/bin/python" ]]; then
@@ -94,6 +109,14 @@ snapshot_download(
     resume_download=True,
 )
 PY
+fi
+
+SNAPSHOT_DIR=$(snapshot_dir_for_repo "$MODEL_REPO")
+if [[ ! -d "$SNAPSHOT_DIR" && -n "${MODEL_REPO_LEGACY:-}" ]]; then
+  LEGACY_SNAPSHOT_DIR=$(snapshot_dir_for_repo "$MODEL_REPO_LEGACY")
+  if [[ -d "$LEGACY_SNAPSHOT_DIR" ]]; then
+    SNAPSHOT_DIR="$LEGACY_SNAPSHOT_DIR"
+  fi
 fi
 
 if [[ ! -d "$SNAPSHOT_DIR" ]]; then

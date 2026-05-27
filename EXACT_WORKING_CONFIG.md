@@ -14,8 +14,8 @@ Default endpoints:
 
 Models:
 
-- `DeepSeek-V4-Flash-Spark`: `0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP`
-- `DeepSeek-V4-Flash-Spark-Mini`: `0xSero/DeepSeek-V4-Flash-162B-codex-K144-REAP`
+- `DeepSeek-V4-Flash-Spark`: `0xSero/DeepSeek-V4-Flash-180B`
+- `DeepSeek-V4-Flash-Spark-Mini`: `0xSero/DeepSeek-V4-Flash-162B`
 - 213B reference: https://huggingface.co/0xSero/DeepSeek-V4-Flash-213B/
 
 K160 default:

@@ -4,8 +4,12 @@ Public reproducible recipe for serving the REAP-pruned DeepSeek V4 Flash models 
 
 Served API names:
 
-- `DeepSeek-V4-Flash-Spark` -> `0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP`
-- `DeepSeek-V4-Flash-Spark-Mini` -> `0xSero/DeepSeek-V4-Flash-162B-codex-K144-REAP`
+- `DeepSeek-V4-Flash-Spark` -> `0xSero/DeepSeek-V4-Flash-180B`
+- `DeepSeek-V4-Flash-Spark-Mini` -> `0xSero/DeepSeek-V4-Flash-162B`
+
+Related Hugging Face reference:
+
+- `0xSero/DeepSeek-V4-Flash-213B`: https://huggingface.co/0xSero/DeepSeek-V4-Flash-213B/
 
 The model-card READMEs to publish to Hugging Face live in `model-cards/`.
 
@@ -57,7 +61,7 @@ Anonymous GHCR manifest access currently returns `denied` until package-scoped u
 `configs/k160-mtp2-200k.env`:
 
 ```bash
-MODEL_REPO=0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP
+MODEL_REPO=0xSero/DeepSeek-V4-Flash-180B
 MODEL_REVISION=7c360e1cd4a5168099dbc54d16d929bf6df04990
 SERVED_MODEL_NAME=DeepSeek-V4-Flash-Spark
 CONTEXT_LENGTH=200000

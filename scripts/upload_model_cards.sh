@@ -33,11 +33,11 @@ api = HfApi(token=token)
 
 uploads = [
     (
-        "0xSero/DeepSeek-V4-Flash-162B-codex-K144-REAP",
+        "0xSero/DeepSeek-V4-Flash-162B",
         repo_root / "model-cards" / "Deepseek-V4-Flash-162B-REAP.md",
     ),
     (
-        "0xSero/DeepSeek-V4-Flash-180B-codex-K160-REAP",
+        "0xSero/DeepSeek-V4-Flash-180B",
         repo_root / "model-cards" / "Deepseek-V4-Flash-180B-REAP.md",
     ),
 ]
