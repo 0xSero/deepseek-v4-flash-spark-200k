@@ -4,13 +4,25 @@ Private reproducible recipe for serving `0xSero/DeepSeek-V4-Flash-180B-codex-K16
 
 ## One Command
 
-From the Spark:
+From the Spark that already has the working image cached:
 
 ```bash
 GITHUB_TOKEN=... HF_TOKEN=... bash -lc 'set -euo pipefail; cd /home/sero/spark; rm -rf deepseek-v4-flash-spark-200k; git clone https://x-access-token:${GITHUB_TOKEN}@github.com/0xSero/deepseek-v4-flash-spark-200k.git; cd deepseek-v4-flash-spark-200k; ./install.sh --profile k160-mtp2-200k --launch'
 ```
 
 `GITHUB_TOKEN` is needed while this repo and the GHCR image are private. `HF_TOKEN` is only needed if the Hugging Face model is private or not already cached.
+
+For a fresh Spark, publish/pull the Docker image first. The expected image name is:
+
+```text
+ghcr.io/0xsero/deepseek-v4-flash-spark-vllm:cutlass451-g27
+```
+
+The current local GitHub token did not have `write:packages`, so GHCR upload was blocked. After refreshing a token with package scope, run:
+
+```bash
+./scripts/push_ghcr_image.sh
+```
 
 ## Default Working Profile
 
@@ -46,4 +58,4 @@ K144 MTP2 improved short decode but was not long-context safe at the tested 8G w
 - Do not add `--enforce-eager`; the working profiles capture CUDA graphs.
 - The image lineage is `vllm-node-dsv4:latest` / vLLM `0.1.dev17016+g27fd665bd.d20260526` plus `nvidia-cutlass-dsl[cu13]==4.5.1`.
 - The patcher applies the REAP nonstandard expert-count router fallback, MXFP4 memory hygiene, optional cute-dsl override hook, and FlashInfer CUDA IPC libcudart fix.
-- The exact GHCR image is expected at `ghcr.io/0xsero/deepseek-v4-flash-spark-vllm:cutlass451-g27`; if it is not available, the installer can build from a local `vllm-node-dsv4:latest` base image.
+- The exact GHCR image is expected at `ghcr.io/0xsero/deepseek-v4-flash-spark-vllm:cutlass451-g27`; if it is not available, the installer can use the already-cached `vllm-node-dsv4-cutlass451:latest` image or build from a local `vllm-node-dsv4:latest` base image.
