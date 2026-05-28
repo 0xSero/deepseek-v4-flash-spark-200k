@@ -5,9 +5,12 @@ PROFILE=${PROFILE:-k160-mtp2-200k}
 SPARK_ROOT=${SPARK_ROOT:-/home/sero/spark}
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 HF_HOME=${HF_HOME:-${SPARK_ROOT}/models/hf-cache}
-IMAGE_REF=${IMAGE_REF:-ghcr.io/0xsero/deepseek-v4-flash-spark-vllm:cutlass451-g27}
+# No public prebuilt image is assumed. Set IMAGE_REF yourself if you have pushed
+# a registry image; otherwise a fresh Spark builds the native vLLM image locally.
+IMAGE_REF=${IMAGE_REF:-}
 LOCAL_IMAGE=${LOCAL_IMAGE:-vllm-node-dsv4-cutlass451:latest}
 BASE_IMAGE=${BASE_IMAGE:-vllm-node-dsv4:latest}
+AUTO_BUILD_BASE_IMAGE=${AUTO_BUILD_BASE_IMAGE:-1}
 LAUNCH=0
 GHCR_LOGGED_IN=0
 
@@ -62,17 +65,22 @@ fi
 echo "MODEL_REVISION=${MODEL_REVISION}"
 
 if ! docker image inspect "$LOCAL_IMAGE" >/dev/null 2>&1; then
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  if [[ -n "${IMAGE_REF:-}" && -n "${GITHUB_TOKEN:-}" && "$IMAGE_REF" == ghcr.io/* ]]; then
     echo "$GITHUB_TOKEN" | docker login ghcr.io -u "${GITHUB_USER:-0xSero}" --password-stdin >/dev/null
     GHCR_LOGGED_IN=1
   fi
-  if docker pull "$IMAGE_REF"; then
+  if [[ -n "${IMAGE_REF:-}" ]] && docker pull "$IMAGE_REF"; then
     docker tag "$IMAGE_REF" "$LOCAL_IMAGE"
   elif docker image inspect "$BASE_IMAGE" >/dev/null 2>&1; then
     BASE_IMAGE="$BASE_IMAGE" TARGET_IMAGE="$LOCAL_IMAGE" "${REPO_ROOT}/scripts/build_cutlass451_image.sh"
+  elif [[ "$AUTO_BUILD_BASE_IMAGE" == "1" ]]; then
+    echo "no local ${LOCAL_IMAGE}, no local ${BASE_IMAGE}, and no public IMAGE_REF configured"
+    echo "building ${BASE_IMAGE} from public Spark/vLLM sources, then deriving ${LOCAL_IMAGE}"
+    TARGET_IMAGE="$BASE_IMAGE" "${REPO_ROOT}/scripts/build_dsv4_base_image.sh"
+    BASE_IMAGE="$BASE_IMAGE" TARGET_IMAGE="$LOCAL_IMAGE" "${REPO_ROOT}/scripts/build_cutlass451_image.sh"
   else
-    echo "could not find or pull $LOCAL_IMAGE, and base $BASE_IMAGE is unavailable" >&2
-    echo "set GITHUB_TOKEN with GHCR package access or preinstall $BASE_IMAGE" >&2
+    echo "could not find ${LOCAL_IMAGE}, and base ${BASE_IMAGE} is unavailable" >&2
+    echo "Either preinstall ${BASE_IMAGE}, set AUTO_BUILD_BASE_IMAGE=1, or set IMAGE_REF to a published image you control." >&2
     exit 1
   fi
 fi
